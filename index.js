@@ -71,7 +71,7 @@ app.get("/authors/:id", async (req, res) => {
   if (!author) {
     res.json({ message: "This ID cannot be found in the database" });
   }
-  res.send(author);
+  res.json(author);
 });
 
 app.delete("/authors/:id", async (req, res) => {
@@ -92,42 +92,20 @@ app.delete("/authors/:id", async (req, res) => {
 });
 
 // // Books of one said author
-// app.get("/authors/:id/books", async (req, res) => {
-//   try {
-//   } catch (err) {
-//     console.log(err);
+app.get("/authors/:id/books", async (req, res) => {
+  let books;
+  try {
+    books = await Authors.findById(req.params.id).select("books");
+  } catch (err) {
+    console.log(err);
 
-//     return res.status(400).json({
-//       message: "An error has occured",
-//     });
-//   }
+    return res.status(400).json({
+      message: "An error has occured",
+    });
+  }
 
-//   res.send();
-// });
-
-// // Json route : author
-// app.get("/json/authors/:id", async (req, res) => {
-//   try {
-//   } catch (err) {
-//     console.log(err);
-
-//     return res.status(400).json({
-//       message: "An error has occured",
-//     });
-//   }
-// });
-
-// // Json route : books
-// app.get("/json/authors/:id/books", async (req, res) => {
-//   try {
-//   } catch (err) {
-//     console.log(err);
-
-//     return res.status(400).json({
-//       message: "An error has occured",
-//     });
-//   }
-// });
+  res.json(books);
+});
 
 // ERROR
 app.get("*", (req, res) => {
