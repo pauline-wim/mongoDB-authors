@@ -1,17 +1,19 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const app = express();
+const Authors = require("./models/authorsModel");
 const dotenv = require("dotenv");
 dotenv.config({
   path: "./config.env",
 });
 
-const mongoose = require("mongoose");
-mongoose.connect(
-  "mongodb+srv://pauline-wim:kyyGVRC3aAuhoFl1@cluster0.lfdsc.mongodb.net/authors?retryWrites=true&w=majority",
-  {
+mongoose
+  .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
-  }.then(() => console.log("Project linked to mongoDB"))
-);
+  })
+  .then(() => console.log("Project linked to mongoDB"));
+
+app.use(express.json());
 
 // ROUTES
 
@@ -23,7 +25,7 @@ app.get("/", (_req, res) => {
 app.get("/authors", async (req, res) => {
   let authors;
   try {
-    authors = await Postgres.query("SELECT * FROM authors");
+    authors = await Authors.find().select("-__v");
   } catch (err) {
     console.log(err);
 
@@ -32,26 +34,50 @@ app.get("/authors", async (req, res) => {
     });
   }
 
-  res.json(authors.rows);
+  res.json(authors);
+});
+
+app.post("/authors", async (req, res) => {
+  let authors;
+  try {
+    authors = await Authors.create(req.body);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(400).json({
+      message: "An error has occured",
+    });
+  }
+
+  res.status(201).json({
+    message: "Author created",
+  });
 });
 
 // Author & nationality
 app.get("/authors/:id", async (req, res) => {
-  // const author = authors.find((_a, i) => {
-  //   const id = i + 1;
-  //   return req.params.id === id.toString();
-  // });
-  // if (!author) {
-  //   return res.send("This author does not exist, enter other ID.");
-  // }
-  // res.send(`${author.name}, ${author.nationality}`);
-
-  let authors;
+  let author;
   try {
-    authors = await Postgres.query(
-      "SELECT * FROM authors WHERE authors.author_id=$1",
-      [req.params.id]
-    );
+    author = await Authors.findById(req.params.id)
+      .select("name")
+      .select("nationality");
+  } catch (err) {
+    console.log(err);
+
+    return res.status(400).json({
+      message: "An error has occured",
+    });
+  }
+  if (!author) {
+    res.json({ message: "This ID cannot be found in the database" });
+  }
+  res.send(author);
+});
+
+app.delete("/authors/:id", async (req, res) => {
+  let author;
+  try {
+    author = await Authors.findByIdAndRemove(req.params.id);
   } catch (err) {
     console.log(err);
 
@@ -60,85 +86,48 @@ app.get("/authors/:id", async (req, res) => {
     });
   }
 
-  res.send(`${authors.rows[0].name}, ${authors.rows[0].nationality}`);
+  res.status(201).json({
+    message: `Author ${req.params.id} deleted`,
+  });
 });
 
-// Books of one said author
-app.get("/authors/:id/books", async (req, res) => {
-  // const books = authors[req.params.id - 1].books;
-  // if (!books) {
-  //   return res.send("This author can't be found");
-  // }
+// // Books of one said author
+// app.get("/authors/:id/books", async (req, res) => {
+//   try {
+//   } catch (err) {
+//     console.log(err);
 
-  let books;
-  try {
-    books = await Postgres.query(
-      "SELECT books FROM authors WHERE authors.author_id=$1",
-      [req.params.id]
-    );
-  } catch (err) {
-    console.log(err);
+//     return res.status(400).json({
+//       message: "An error has occured",
+//     });
+//   }
 
-    return res.status(400).json({
-      message: "An error has occured",
-    });
-  }
+//   res.send();
+// });
 
-  res.send(books.rows[0].books.join(", "));
-});
+// // Json route : author
+// app.get("/json/authors/:id", async (req, res) => {
+//   try {
+//   } catch (err) {
+//     console.log(err);
 
-// Json route : author
-app.get("/json/authors/:id", async (req, res) => {
-  // const author = authors[req.params.id];
-  // if (!author) {
-  //   return res.json({ messsage: "This ID does not exist" });
-  // }
-  // delete author.books;
-  // res.json(author);
+//     return res.status(400).json({
+//       message: "An error has occured",
+//     });
+//   }
+// });
 
-  let authors;
-  try {
-    authors = await Postgres.query(
-      "SELECT * FROM authors WHERE authors.author_id=$1",
-      [req.params.id]
-    );
-  } catch (err) {
-    console.log(err);
+// // Json route : books
+// app.get("/json/authors/:id/books", async (req, res) => {
+//   try {
+//   } catch (err) {
+//     console.log(err);
 
-    return res.status(400).json({
-      message: "An error has occured",
-    });
-  }
-
-  delete authors.rows[0].books;
-
-  res.json(authors.rows[0]);
-});
-
-// Json route : books
-app.get("/json/authors/:id/books", async (req, res) => {
-  // const books = authors[req.params.id].books;
-  // if (!books) {
-  //   return res.json({ messsage: "This author can't be found" });
-  // }
-  // res.json({ books });
-
-  let books;
-  try {
-    books = await Postgres.query(
-      "SELECT books FROM authors WHERE authors.author_id=$1",
-      [req.params.id]
-    );
-  } catch (err) {
-    console.log(err);
-
-    return res.status(400).json({
-      message: "An error has occured",
-    });
-  }
-
-  res.send(books.rows[0]);
-});
+//     return res.status(400).json({
+//       message: "An error has occured",
+//     });
+//   }
+// });
 
 // ERROR
 app.get("*", (req, res) => {
